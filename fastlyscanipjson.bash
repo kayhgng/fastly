@@ -1,27 +1,70 @@
 #!/bin/bash
 
-# دریافت داده‌ها از آدرس URL
-response=$(curl -fsSl https://raw.githubusercontent.com/Kolandone/fastlyipscan/refs/head/main/ipscan.sh)
+# آدرس URL اسکریپت ipscan.sh
+URL="https://raw.githubusercontent.com/Kolandone/fastlyipscan/refs/heads/main/ipscan.sh"
+SCRIPT_FILE="ipscan.sh"
+OUTPUT_FILE="ip_data.json"
 
-# استخراج آی‌پی‌ها و مقادیر Latency از پاسخ
-ips_and_latencies=$(echo "$response" | grep -Eo '(\d+\.\d+\.\d+\.\d+)\s+([0-9]+(?:\.[0-9]+)?)' )
+# دانلود اسکریپت ipscan.sh
+echo "Downloading ipscan.sh script..."
+curl -fsSl "$URL" -o "$SCRIPT_FILE"
 
-# مرتب کردن آی‌پی‌ها بر اساس Latency (عدد بعد از IP)
-sorted_ips=$(echo "$ips_and_latencies" | sort -k2,2n)
+# بررسی موفقیت دانلود
+if [ ! -f "$SCRIPT_FILE" ]; then
+    echo "Failed to download the script!"
+    exit 1
+fi
 
-# ساختاردهی داده‌ها برای فایل JSON
-json_data="["
+# اجرای اسکریپت ipscan.sh و دریافت خروجی آن
+echo "Running ipscan.sh script..."
+OUTPUT=$(bash "$SCRIPT_FILE")
+
+# بررسی موفقیت اجرای اسکریپت
+if [ $? -ne 0 ]; then
+    echo "Error executing the script!"
+    exit 1
+fi
+
+# استخراج IP و Latency از خروجی
+# استفاده از regex برای استخراج داده‌ها
+echo "Extracting IP and Latency from the output..."
+IP_DATA=()
 while IFS= read -r line; do
-    ip=$(echo "$line" | awk '{print $1}')
-    latency=$(echo "$line" | awk '{print $2}')
-    json_data="$json_data{\"IP\": \"$ip\", \"Latency(ms)\": $latency},"
-done <<< "$sorted_ips"
+    if [[ "$line" =~ ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\ +([0-9]+(\.[0-9]+)?) ]]; then
+        IP="${BASH_REMATCH[1]}"
+        LATENCY="${BASH_REMATCH[2]}"
+        IP_DATA+=("$LATENCY,$IP")
+    fi
+done <<< "$OUTPUT"
 
-# حذف کاما اضافی در انتهای آخرین آیتم
-json_data="${json_data%,}]"
+# بررسی وجود داده‌ها
+if [ ${#IP_DATA[@]} -eq 0 ]; then
+    echo "No valid IP and Latency data found!"
+    exit 1
+fi
 
-# ذخیره کردن داده‌ها در فایل JSON
-echo "$json_data" > ip_data.json
+# مرتب‌سازی داده‌ها بر اساس Latency (کمترین به بیشترین)
+echo "Sorting IP data by Latency..."
+SORTED_DATA=$(for entry in "${IP_DATA[@]}"; do echo "$entry"; done | sort -t, -k1,1n)
+
+# ساخت فایل JSON
+echo "Saving data to JSON..."
+echo "[" > "$OUTPUT_FILE"
+first=true
+while IFS=, read -r latency ip; do
+    if [ "$first" = true ]; then
+        first=false
+    else
+        echo "," >> "$OUTPUT_FILE"
+    fi
+    echo "    {\"IP\": \"$ip\", \"Latency(ms)\": $latency}" >> "$OUTPUT_FILE"
+done <<< "$SORTED_DATA"
+echo "]" >> "$OUTPUT_FILE"
 
 # نمایش فایل JSON
-cat ip_data.json
+echo "Sorted IP data saved to $OUTPUT_FILE"
+cat "$OUTPUT_FILE"
+
+# حذف اسکریپت ipscan.sh پس از اتمام
+rm "$SCRIPT_FILE"
+
