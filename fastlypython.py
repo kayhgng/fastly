@@ -3,7 +3,6 @@ import re
 import json
 import os
 import requests
-import time
 
 # آدرس URL که اسکریپت bash از آن بارگیری می‌شود
 url = "https://raw.githubusercontent.com/Kolandone/fastlyipscan/refs/heads/main/ipscan.sh"
@@ -21,23 +20,20 @@ def download_bash_script(url, filename):
         return False
     return True
 
-# مرحله 2: اجرای اسکریپت bash از فایل (در Termux با استفاده از bash)
+# مرحله 2: اجرای اسکریپت bash از فایل و گرفتن خروجی
 def execute_bash_script(filename):
     try:
-        # اجرای اسکریپت Bash
-        print(f"Executing bash script: {filename}")
-        subprocess.check_call(['bash', filename])
-        print(f"Script executed successfully.")
+        # اجرای اسکریپت bash و گرفتن خروجی آن
+        result = subprocess.check_output(['bash', filename], stderr=subprocess.STDOUT)
+        return result.decode('utf-8')  # تبدیل خروجی به رشته
     except subprocess.CalledProcessError as e:
         print(f"Error executing script: {e}")
-        return False
-    return True
+        return None
 
 # مرحله 3: پردازش داده‌ها برای استخراج IP و Latency
 def extract_ips_and_latencies(output):
     # استفاده از regex برای استخراج IP و Latency از خروجی
     data = re.findall(r'(\d+\.\d+\.\d+\.\d+)\s+(\d+(\.\d+)?)', output)
-    print("Extracted Data:", data)  # چاپ داده‌های استخراج‌شده
     return [{"IP": ip, "Latency(ms)": float(latency)} for ip, latency, _ in data]
 
 # مرحله 4: ذخیره داده‌ها به فرمت JSON
@@ -45,56 +41,30 @@ def save_to_json(data, filename="ip_data.json"):
     with open(filename, 'w') as json_file:
         json.dump(data, json_file, indent=4)
 
-# مرحله 5: استخراج داده‌ها از فایل خروجی
-def get_script_output(filename):
-    with open(filename, 'r') as file:
-        return file.read()
-
-# مرحله 6: پاکسازی صفحه ترمینال
-def clear_terminal():
-    os.system('clear')  # برای سیستم‌های UNIX مانند Linux و Termux
-    # برای ویندوز اگر استفاده می‌کنید می‌توانید از دستور `cls` استفاده کنید:
-    # os.system('cls')
-
-# مرحله 7: اجرای اسکریپت به صورت مرحله به مرحله و مدیریت منابع
+# مرحله 5: اجرای اسکریپت و پردازش خروجی آن
 def run_script_with_management():
     # دانلود اسکریپت
     if download_bash_script(url, script_filename):
-        # اجرای اسکریپت با تاخیر بین مراحل برای جلوگیری از استفاده زیاد از منابع
-        if execute_bash_script(script_filename):
-            # خواندن خروجی اسکریپت از فایل (در صورتی که اسکریپت چیزی در فایل ذخیره کرده باشد)
-            try:
-                bash_output = get_script_output(script_filename)
-                
-                # چاپ خروجی اسکریپت برای بررسی
-                print("Bash Script Output:")
-                print(bash_output)
-                
-                # استخراج داده‌ها از خروجی
-                ip_data = extract_ips_and_latencies(bash_output)
-                
-                if ip_data:
-                    # مرتب‌سازی داده‌ها بر اساس Latency
-                    sorted_ip_data = sorted(ip_data, key=lambda x: x["Latency(ms)"])
-                
-                    # ذخیره‌سازی داده‌ها به فایل JSON
-                    save_to_json(sorted_ip_data)
-                
-                    # پاک کردن صفحه ترمینال
-                    clear_terminal()
-                
-                    # نمایش داده‌های مرتب‌شده
-                    print("Sorted IP data (by Latency):")
-                    print(json.dumps(sorted_ip_data, indent=4))
-                else:
-                    print("No IP data extracted.")
-                
-                # حذف فایل اسکریپت پس از اتمام
-                os.remove(script_filename)
-            except Exception as e:
-                print(f"Error processing script output: {e}")
+        # اجرای اسکریپت و دریافت خروجی
+        output = execute_bash_script(script_filename)
+        if output:
+            # استخراج IP و Latency
+            ip_data = extract_ips_and_latencies(output)
+            
+            # مرتب‌سازی داده‌ها بر اساس Latency
+            sorted_ip_data = sorted(ip_data, key=lambda x: x["Latency(ms)"])
+            
+            # ذخیره‌سازی داده‌ها به فایل JSON
+            save_to_json(sorted_ip_data)
+            
+            # چاپ خروجی به کنسول
+            print("Sorted IP data (by Latency):")
+            print(json.dumps(sorted_ip_data, indent=4))
+            
+            # حذف فایل اسکریپت پس از اتمام
+            os.remove(script_filename)
         else:
-            print("Failed to execute bash script.")
+            print("Failed to get output from the bash script.")
     else:
         print("Failed to download bash script.")
 
