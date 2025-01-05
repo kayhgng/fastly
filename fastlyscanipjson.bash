@@ -1,5 +1,65 @@
 #!/bin/bash
 
+# تابع تبدیل IP به عدد (برای مرتب‌سازی بهتر)
+ip_to_decimal() {
+    local ip="$1"
+    local a b c d
+    IFS=. read -r a b c d <<< "$ip"
+    echo "$((a * 256**3 + b * 256**2 + c * 256 + d))"
+}
+
+# تابع تبدیل عدد به IP
+decimal_to_ip() {
+    local dec="$1"
+    local a=$((dec / 256**3 % 256))
+    local b=$((dec / 256**2 % 256))
+    local c=$((dec / 256 % 256))
+    local d=$((dec % 256))
+    echo "$a.$b.$c.$d"
+}
+
+# تابع اندازه‌گیری تاخیر (Latency)
+measure_latency() {
+    local ip=$1
+    local latency=$(ping -c 1 -W 1 "$ip" | grep 'time=' | awk -F'time=' '{ print $2 }' | cut -d' ' -f1)
+    if [ -z "$latency" ]; then
+        latency="N/A"
+    fi
+    printf "%s %s\n" "$ip" "$latency"
+}
+
+# تابع نمایش پیشرفت
+show_progress() {
+    local current=$1
+    local total=$2
+    local percent=$(( 100 * current / total ))
+    local progress=$(( current * 50 / total ))
+    local green=$(( progress ))
+    local red=$(( 50 - progress ))
+
+    printf "\r["
+    printf "\e[42m%${green}s\e[0m" | tr ' ' '='
+    printf "\e[41m%${red}s\e[0m" | tr ' ' '='
+    printf "] %d%%" "$percent"
+}
+
+# تابع ذخیره‌سازی داده‌ها به فرمت JSON
+save_to_json() {
+    local data="$1"
+    local output_file="$2"
+    echo "[" > "$output_file"
+    first=true
+    while IFS=, read -r latency ip; do
+        if [ "$first" = true ]; then
+            first=false
+        else
+            echo "," >> "$output_file"
+        fi
+        echo "    {\"IP\": \"$ip\", \"Latency(ms)\": $latency}" >> "$output_file"
+    done <<< "$data"
+    echo "]" >> "$output_file"
+}
+
 # آدرس URL اسکریپت ipscan.sh
 URL="https://raw.githubusercontent.com/Kolandone/fastlyipscan/refs/heads/main/ipscan.sh"
 SCRIPT_FILE="ipscan.sh"
@@ -26,7 +86,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # استخراج IP و Latency از خروجی
-# استفاده از regex برای استخراج داده‌ها
 echo "Extracting IP and Latency from the output..."
 IP_DATA=()
 while IFS= read -r line; do
@@ -47,24 +106,13 @@ fi
 echo "Sorting IP data by Latency..."
 SORTED_DATA=$(for entry in "${IP_DATA[@]}"; do echo "$entry"; done | sort -t, -k1,1n)
 
-# ساخت فایل JSON
-echo "Saving data to JSON..."
-echo "[" > "$OUTPUT_FILE"
-first=true
-while IFS=, read -r latency ip; do
-    if [ "$first" = true ]; then
-        first=false
-    else
-        echo "," >> "$OUTPUT_FILE"
-    fi
-    echo "    {\"IP\": \"$ip\", \"Latency(ms)\": $latency}" >> "$OUTPUT_FILE"
-done <<< "$SORTED_DATA"
-echo "]" >> "$OUTPUT_FILE"
+# ذخیره داده‌ها به فایل JSON
+echo "Saving sorted data to $OUTPUT_FILE..."
+save_to_json "$SORTED_DATA" "$OUTPUT_FILE"
 
-# نمایش فایل JSON
+# نمایش داده‌ها به فرمت JSON
 echo "Sorted IP data saved to $OUTPUT_FILE"
 cat "$OUTPUT_FILE"
 
 # حذف اسکریپت ipscan.sh پس از اتمام
 rm "$SCRIPT_FILE"
-
