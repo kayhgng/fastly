@@ -5,7 +5,7 @@ import os
 import requests
 
 # آدرس URL که اسکریپت bash از آن بارگیری می‌شود
-url = "https://raw.githubusercontent.com/Kolandone/fastlyipscan/refs/head/main/ipscan.sh"
+url = "https://raw.githubusercontent.com/Kolandone/fastlyipscan/refs/heads/main/ipscan.sh"
 script_filename = "ipscan.sh"
 
 # مرحله 1: دانلود اسکریپت bash به فایل
