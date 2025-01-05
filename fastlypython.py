@@ -49,7 +49,13 @@ def get_script_output(filename):
     with open(filename, 'r') as file:
         return file.read()
 
-# مرحله 6: اجرای اسکریپت به صورت مرحله به مرحله و مدیریت منابع
+# مرحله 6: پاکسازی صفحه ترمینال
+def clear_terminal():
+    os.system('clear')  # برای سیستم‌های UNIX مانند Linux و Termux
+    # برای ویندوز اگر استفاده می‌کنید می‌توانید از دستور `cls` استفاده کنید:
+    # os.system('cls')
+
+# مرحله 7: اجرای اسکریپت به صورت مرحله به مرحله و مدیریت منابع
 def run_script_with_management():
     # دانلود اسکریپت
     if download_bash_script(url, script_filename):
@@ -62,11 +68,14 @@ def run_script_with_management():
                 # استخراج داده‌ها از خروجی
                 ip_data = extract_ips_and_latencies(bash_output)
                 
-                # مرتب‌سازی داده‌ها
+                # مرتب‌سازی داده‌ها بر اساس Latency
                 sorted_ip_data = sorted(ip_data, key=lambda x: x["Latency(ms)"])
                 
                 # ذخیره‌سازی داده‌ها به فایل JSON
                 save_to_json(sorted_ip_data)
+                
+                # پاک کردن صفحه ترمینال
+                clear_terminal()
                 
                 # نمایش داده‌های مرتب‌شده
                 print("Sorted IP data (by Latency):")
