@@ -37,6 +37,7 @@ def execute_bash_script(filename):
 def extract_ips_and_latencies(output):
     # استفاده از regex برای استخراج IP و Latency از خروجی
     data = re.findall(r'(\d+\.\d+\.\d+\.\d+)\s+(\d+(\.\d+)?)', output)
+    print("Extracted Data:", data)  # چاپ داده‌های استخراج‌شده
     return [{"IP": ip, "Latency(ms)": float(latency)} for ip, latency, _ in data]
 
 # مرحله 4: ذخیره داده‌ها به فرمت JSON
@@ -65,21 +66,28 @@ def run_script_with_management():
             try:
                 bash_output = get_script_output(script_filename)
                 
+                # چاپ خروجی اسکریپت برای بررسی
+                print("Bash Script Output:")
+                print(bash_output)
+                
                 # استخراج داده‌ها از خروجی
                 ip_data = extract_ips_and_latencies(bash_output)
                 
-                # مرتب‌سازی داده‌ها بر اساس Latency
-                sorted_ip_data = sorted(ip_data, key=lambda x: x["Latency(ms)"])
+                if ip_data:
+                    # مرتب‌سازی داده‌ها بر اساس Latency
+                    sorted_ip_data = sorted(ip_data, key=lambda x: x["Latency(ms)"])
                 
-                # ذخیره‌سازی داده‌ها به فایل JSON
-                save_to_json(sorted_ip_data)
+                    # ذخیره‌سازی داده‌ها به فایل JSON
+                    save_to_json(sorted_ip_data)
                 
-                # پاک کردن صفحه ترمینال
-                clear_terminal()
+                    # پاک کردن صفحه ترمینال
+                    clear_terminal()
                 
-                # نمایش داده‌های مرتب‌شده
-                print("Sorted IP data (by Latency):")
-                print(json.dumps(sorted_ip_data, indent=4))
+                    # نمایش داده‌های مرتب‌شده
+                    print("Sorted IP data (by Latency):")
+                    print(json.dumps(sorted_ip_data, indent=4))
+                else:
+                    print("No IP data extracted.")
                 
                 # حذف فایل اسکریپت پس از اتمام
                 os.remove(script_filename)
