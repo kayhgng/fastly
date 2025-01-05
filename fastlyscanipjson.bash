@@ -17,7 +17,7 @@ decimal_to_ip() {
 }
 
 measure_latency() {
-    local ip=$1
+    local ip="$1"
     local latency=$(ping -c 1 -W 1 "$ip" | grep 'time=' | awk -F'time=' '{ print $2 }' | cut -d' ' -f1)
     if [ -z "$latency" ]; then
         latency="N/A"
@@ -132,16 +132,33 @@ echo -e "\e[1;35m*\e[0m \e[1;31mT\e[1;32mE\e[1;33mL\e[1;34mE\e[1;35mG\e[1;36mR\e
 echo -e "\e[1;35m*\e[0m \e[1;31mG\e[1;32mI\e[1;33mT\e[1;34mH\e[1;35mU\e[1;36mB\e[0m : \e[4;34mhttps://github.com/kayhgng\e[0m \e[1;35m"
 echo -e "\e[1;35m*****************************************"
 echo ""
-
 echo -e "\e[1;32mDisplaying top IPs with valid latency...\e[0m"
 
 # مرتب‌سازی نتایج بر اساس Latency (کم به زیاد)
 sorted_ping_results=$(echo "$ping_results" | sort -k2 -n)
 
-# نمایش IP ها با فرمت جدید
+# نمایش IP ها با فرمت جدید و ساخت JSON
+json_output="["
+counter=0
 echo "$sorted_ping_results" | while read -r ip latency; do
     if [ "$latency" == "N/A" ]; then
         continue
     fi
     printf "%-23s-----------> %-10s\n" "$ip" "$latency"
+    
+    # ایجاد JSON
+    if [[ $counter -gt 0 ]]; then
+        json_output+=","
+    fi
+    json_output+="{\"ip\": \"$ip\", \"latency\": \"$latency\"}"
+    counter=$((counter+1))
 done
+json_output+=",\"developer\": \"Alikay_h\""
+json_output+="]"
+
+# ذخیره خروجی به فایل JSON
+echo "$json_output" > latency_data.json
+echo -e "\nJSON file 'latency_data.json' created successfully."
+
+# نمایش پیامی در ترمینال
+echo -e "\nBased on Kolandone Project with Customized and better Edited by KayH GNG"
