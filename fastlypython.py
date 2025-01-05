@@ -3,6 +3,7 @@ import re
 import json
 import os
 import requests
+import time
 
 # آدرس URL که اسکریپت bash از آن بارگیری می‌شود
 url = "https://raw.githubusercontent.com/Kolandone/fastlyipscan/refs/heads/main/ipscan.sh"
@@ -24,6 +25,7 @@ def download_bash_script(url, filename):
 def execute_bash_script(filename):
     try:
         # اجرای اسکریپت Bash
+        print(f"Executing bash script: {filename}")
         subprocess.check_call(['bash', filename])
         print(f"Script executed successfully.")
     except subprocess.CalledProcessError as e:
@@ -47,12 +49,37 @@ def get_script_output(filename):
     with open(filename, 'r') as file:
         return file.read()
 
-# اجرای مراحل مختلف
-if __name__ == "__main__":
+# مرحله 6: اجرای اسکریپت به صورت مرحله به مرحله و مدیریت منابع
+def run_script_with_management():
     # دانلود اسکریپت
     if download_bash_script(url, script_filename):
-        # اجرای اسکریپت
-        execute_bash_script(script_filename)
+        # اجرای اسکریپت با تاخیر بین مراحل برای جلوگیری از استفاده زیاد از منابع
+        if execute_bash_script(script_filename):
+            # خواندن خروجی اسکریپت از فایل (در صورتی که اسکریپت چیزی در فایل ذخیره کرده باشد)
+            try:
+                bash_output = get_script_output(script_filename)
+                
+                # استخراج داده‌ها از خروجی
+                ip_data = extract_ips_and_latencies(bash_output)
+                
+                # مرتب‌سازی داده‌ها
+                sorted_ip_data = sorted(ip_data, key=lambda x: x["Latency(ms)"])
+                
+                # ذخیره‌سازی داده‌ها به فایل JSON
+                save_to_json(sorted_ip_data)
+                
+                # نمایش داده‌های مرتب‌شده
+                print("Sorted IP data (by Latency):")
+                print(json.dumps(sorted_ip_data, indent=4))
+                
+                # حذف فایل اسکریپت پس از اتمام
+                os.remove(script_filename)
+            except Exception as e:
+                print(f"Error processing script output: {e}")
+        else:
+            print("Failed to execute bash script.")
+    else:
+        print("Failed to download bash script.")
 
-        # حذف فایل اسکریپت پس از اتمام
-        os.remove(script_filename)
+if __name__ == "__main__":
+    run_script_with_management()
