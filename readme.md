@@ -35,6 +35,19 @@ This script is a customized and enhanced version of the original Kolandone proje
 2. **Run the Script**: Simply execute the script in your terminal.
 3. **View the Results**: The script will display the IP addresses and their latencies in a clean format in the terminal. Additionally, the script will generate a `latency_data.json` file that contains the structured data.
 
+## How we can use in termux?
+```
+bash <(curl -fsSl https://raw.githubusercontent.com/kayhgng/fastly/refs/heads/main/fastlyscanipjson.bash)
+```
+
+## چجوری در ترموکس ازش استفاده کنیم؟
+
+```
+bash <(curl -fsSl https://raw.githubusercontent.com/kayhgng/fastly/refs/heads/main/fastlyscanipjson.bash)
+```
+
+
+
 #### **Example Output in Terminal:**
 
 ```
